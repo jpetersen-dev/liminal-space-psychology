@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { MessageCircle, X, Send } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { supabase } from "../lib/supabase";
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,31 +10,64 @@ export function ChatWidget() {
   ]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
+  
+  // Use a ref to ensure we don't recreate the UUID on re-renders
+  const sessionIdRef = useRef<string>(crypto.randomUUID());
+  const sessionId = sessionIdRef.current;
+
+  // Subscribe to Supabase Realtime for new bot replies
+  useEffect(() => {
+    const channel = supabase
+      .channel('realtime_chat')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `session_id=eq.${sessionId}` },
+        (payload) => {
+          const newMsg = payload.new as { role: "user" | "bot", content: string };
+          // Only add bot messages from Realtime, as user messages are added optimistically
+          if (newMsg.role === 'bot') {
+            setMessages(prev => [...prev, { role: "bot", text: newMsg.content }]);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sessionId]);
 
   const handleSend = async () => {
     if (!input.trim() || isSending) return;
     
-    // Optimistic UI update
     const currentInput = input;
+    // Optimistic UI update
     setMessages(prev => [...prev, { role: "user", text: currentInput }]);
     setInput("");
     setIsSending(true);
 
     try {
+      // 1. Save to Supabase History
+      await supabase.from('chat_messages').insert([{
+        session_id: sessionId,
+        role: 'user',
+        content: currentInput
+      }]);
+
+      // 2. Notify Telegram
       const response = await fetch('/api/telegram', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: currentInput })
+        body: JSON.stringify({ message: currentInput, sessionId })
       });
 
       if (!response.ok) {
-        throw new Error("Error enviando mensaje");
+        throw new Error("Error enviando notificación a Telegram");
       }
-
-      setMessages(prev => [...prev, { 
-        role: "bot", 
-        text: "Mensaje enviado con éxito. Un especialista te contactará pronto." 
-      }]);
+      
+      // We no longer manually add the "Mensaje enviado" bot response here.
+      // If we want a confirmation, we can let the bot reply via Webhook, 
+      // or just keep this silent since it's a live chat now.
     } catch (error) {
       console.error(error);
       setMessages(prev => [...prev, { 

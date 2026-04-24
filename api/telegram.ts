@@ -12,10 +12,10 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { message } = req.body;
+    const { message, sessionId } = req.body;
 
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required' });
+    if (!message || !sessionId) {
+      return res.status(400).json({ error: 'Message and sessionId are required' });
     }
 
     const telegramResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -23,7 +23,7 @@ export default async function handler(req: any, res: any) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: chatId,
-        text: `*Nuevo mensaje de paciente:*\n\n${message}`,
+        text: `*Nuevo mensaje de paciente:*\n\n${message}\n\n_ID: ${sessionId}_`,
         parse_mode: 'Markdown'
       }),
     });
