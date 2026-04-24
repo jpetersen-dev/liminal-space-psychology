@@ -8,22 +8,41 @@ export function ChatWidget() {
     { role: "bot", text: "¡Hola! ¿En qué puedo ayudarte hoy?" }
   ]);
   const [input, setInput] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const handleSend = async () => {
+    if (!input.trim() || isSending) return;
     
     // Optimistic UI update
-    setMessages(prev => [...prev, { role: "user", text: input }]);
     const currentInput = input;
+    setMessages(prev => [...prev, { role: "user", text: currentInput }]);
     setInput("");
+    setIsSending(true);
 
-    // Here we'd send via webhook to the agent system. Simulated response for now.
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/telegram', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: currentInput })
+      });
+
+      if (!response.ok) {
+        throw new Error("Error enviando mensaje");
+      }
+
       setMessages(prev => [...prev, { 
         role: "bot", 
-        text: "Gracias por tu mensaje. Un asistente estará conectado contigo pronto o puedes agendar una cita directamente desde la pestaña 'Agenda'." 
+        text: "Mensaje enviado con éxito. Un especialista te contactará pronto." 
       }]);
-    }, 1000);
+    } catch (error) {
+      console.error(error);
+      setMessages(prev => [...prev, { 
+        role: "bot", 
+        text: "Hubo un problema al enviar tu mensaje. Por favor, intenta de nuevo más tarde." 
+      }]);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
