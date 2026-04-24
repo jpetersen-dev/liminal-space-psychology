@@ -25,7 +25,7 @@ export default async function handler(req: any, res: any) {
   try {
     const { serviceId, therapistName, date, time, customerName, customerEmail } = req.body;
 
-    if (!serviceId || !therapistName || !date || !time || !customerEmail) {
+    if (!serviceId || !therapistName || !date || !time) {
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
 
@@ -37,7 +37,7 @@ export default async function handler(req: any, res: any) {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
-      customer_email: customerEmail,
+      ...(customerEmail ? { customer_email: customerEmail } : {}),
       line_items: [
         {
           price_data: {
