@@ -274,7 +274,9 @@ export function Booking() {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                          serviceId: selectedServiceId,
+                          serviceTitle: currentService?.title,
+                          servicePrice: currentService?.price,
+                          serviceDuration: currentService?.duration,
                           therapistName: currentTherapist?.name,
                           date: selectedDate ? format(selectedDate, 'EEEE d MMMM yyyy', { locale: es }) : '',
                           time: selectedTime,

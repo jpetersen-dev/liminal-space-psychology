@@ -4,13 +4,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20' as any,
 });
 
-// Map service IDs to prices in cents (USD)
-const SERVICE_PRICES: Record<string, { amount: number; name: string }> = {
-  s1: { amount: 5000, name: 'Psicoterapia Individual (Online) - 60 min' },
-  s2: { amount: 8000, name: 'Terapia de Pareja Transcultural - 90 min' },
-  s3: { amount: 5000, name: 'Acompañamiento en Migración - 60 min' },
-};
-
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -23,16 +16,18 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { serviceId, therapistName, date, time, customerName, customerEmail } = req.body;
+    const { serviceTitle, servicePrice, serviceDuration, therapistName, date, time, customerName, customerEmail } = req.body;
 
-    if (!serviceId || !therapistName || !date || !time) {
+    if (!serviceTitle || !servicePrice || !therapistName || !date || !time) {
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
 
-    const service = SERVICE_PRICES[serviceId];
-    if (!service) {
-      return res.status(400).json({ error: 'Servicio no encontrado' });
+    // Parse price string like "$50" or "$80" to cents
+    const priceNum = parseFloat(servicePrice.replace(/[^0-9.]/g, ''));
+    if (isNaN(priceNum) || priceNum <= 0) {
+      return res.status(400).json({ error: 'Precio inválido' });
     }
+    const amountInCents = Math.round(priceNum * 100);
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -43,17 +38,16 @@ export default async function handler(req: any, res: any) {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: service.name,
-              description: `Sesión con ${therapistName} — ${date} a las ${time}`,
-              images: ['https://liminal-space-psychology.vercel.app/logo.png'],
+              name: serviceTitle,
+              description: `Sesión con ${therapistName} — ${date} a las ${time} (${serviceDuration || 60} min)`,
             },
-            unit_amount: service.amount,
+            unit_amount: amountInCents,
           },
           quantity: 1,
         },
       ],
       metadata: {
-        serviceId,
+        serviceTitle,
         therapistName,
         date,
         time,
