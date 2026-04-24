@@ -7,6 +7,8 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password?: string) => Promise<{error: any}>;
+  signUpWithEmail: (email: string, password?: string, name?: string) => Promise<{error: any}>;
   signOut: () => Promise<void>;
 }
 
@@ -59,6 +61,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const signInWithEmail = async (email: string, password?: string) => {
+    if (!supabase) return { error: new Error('Supabase not connected') };
+    
+    if (password) {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      return { error };
+    } else {
+      // Magic Link
+      const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } });
+      return { error };
+    }
+  };
+
+  const signUpWithEmail = async (email: string, password?: string, name?: string) => {
+    if (!supabase) return { error: new Error('Supabase not connected') };
+    
+    // For standard email/password signup
+    if (password) {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name: name || '' },
+          emailRedirectTo: window.location.origin
+        }
+      });
+      return { error };
+    }
+    return { error: new Error('Password required for signup') };
+  };
+
   const signOut = async () => {
     if (!supabase) {
       setUser(null);
@@ -68,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, session, isLoading, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut }}>
       {children}
     </AuthContext.Provider>
   );
