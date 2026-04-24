@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { ChevronLeft, ArrowLeft, ArrowRight, Grid, Tag } from "lucide-react";
-import { articles } from "../data";
+import { useData } from "../contexts/DataContext";
 
 interface ArticleReaderProps {
   articleId: string;
@@ -10,6 +10,10 @@ interface ArticleReaderProps {
 }
 
 export function ArticleReader({ articleId, onBack, onOpenArticle, onViewCatalog }: ArticleReaderProps) {
+  const { articles, isLoading } = useData();
+
+  if (isLoading) return <div className="p-10 text-center text-text-muted">Cargando...</div>;
+
   const currentIndex = articles.findIndex(a => a.id === articleId);
   const article = articles[currentIndex];
 

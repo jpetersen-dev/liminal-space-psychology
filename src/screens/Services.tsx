@@ -1,9 +1,13 @@
 import { motion } from "motion/react";
 import { User, Users, Globe, Clock, Plus } from "lucide-react";
-import { services } from "../data";
+import { useData } from "../contexts/DataContext";
 import { Button } from "../components/ui/Button";
 
 export function Services({ onNavigate }: { onNavigate: (tab: string) => void }) {
+  const { services, isLoading } = useData();
+  
+  if (isLoading) return <div className="p-10 text-center text-text-muted">Cargando...</div>;
+
   const getIcon = (type: string) => {
     switch (type) {
       case "individual": return <User className="text-primary" size={24} />;

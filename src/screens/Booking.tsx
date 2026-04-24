@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from "motion/react";
 import { format, addDays, startOfToday } from "date-fns";
 import { es } from "date-fns/locale";
 import { ChevronLeft, CheckCircle2, Info, CreditCard } from "lucide-react";
-import { therapists, services } from "../data";
+import { useData } from "../contexts/DataContext";
 import { Button } from "../components/ui/Button";
 import { cn } from "../lib/utils";
 
 export function Booking() {
+  const { therapists, services, isLoading } = useData();
   const [step, setStep] = useState(1);
   const [selectedTherapistId, setSelectedTherapistId] = useState<string | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
@@ -23,6 +24,8 @@ export function Booking() {
 
   const currentTherapist = therapists.find(t => t.id === selectedTherapistId);
   const currentService = services.find(s => s.id === selectedServiceId);
+
+  if (isLoading) return <div className="p-10 text-center text-text-muted">Cargando...</div>;
 
   return (
     <div className="px-6 pt-6 pb-4 flex flex-col h-full bg-app-bg">

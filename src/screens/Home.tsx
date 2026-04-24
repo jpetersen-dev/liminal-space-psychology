@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowRight, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
-import { therapists, articles } from "../data";
+import { useData } from "../contexts/DataContext";
 import { Button } from "../components/ui/Button";
 
 interface HomeProps {
@@ -11,9 +11,13 @@ interface HomeProps {
 }
 
 export function Home({ onNavigate, onOpenArticles, onOpenArticle }: HomeProps) {
+  const { therapists, articles, isLoading } = useData();
+  
   // Take only the first 2 articles for the preview
   const recentArticles = articles.slice(0, 2);
   const [expandedTherapistId, setExpandedTherapistId] = useState<string | null>(null);
+
+  if (isLoading) return <div className="p-10 text-center text-text-muted">Cargando...</div>;
 
   return (
     <div className="flex flex-col">

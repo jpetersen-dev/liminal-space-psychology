@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { ChevronLeft, Search, Tag } from "lucide-react";
-import { articles } from "../data";
+import { useData } from "../contexts/DataContext";
 
 interface ArticlesHubProps {
   onBack: () => void;
@@ -9,8 +9,11 @@ interface ArticlesHubProps {
 }
 
 export function ArticlesHub({ onBack, onOpenArticle }: ArticlesHubProps) {
+  const { articles, isLoading } = useData();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("Todos");
+
+  if (isLoading) return <div className="p-10 text-center text-text-muted">Cargando...</div>;
 
   // Derive categories from articles (unique values) manually
   const categories = ["Todos", "Ansiedad", "Relaciones", "Bienestar", "Terapia"];

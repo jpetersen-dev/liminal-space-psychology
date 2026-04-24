@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronRight, ChevronLeft, Phone, Mail, HelpCircle, Plus, Minus } from "lucide-react";
-import { therapists } from "../data";
+import { useData } from "../contexts/DataContext";
 import { useAuth } from "../contexts/AuthContext";
 
 interface MoreProps {
@@ -9,9 +9,12 @@ interface MoreProps {
 }
 
 export function More({ onOpenArticles }: MoreProps) {
+  const { therapists, isLoading } = useData();
   const [view, setView] = useState<"menu" | "about" | "contact" | "faq">("menu");
   const { user } = useAuth();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  if (isLoading) return <div className="p-10 text-center text-text-muted">Cargando...</div>;
 
   const menuItems = [
     { id: "about", label: "Quiénes Somos", desc: "Conoce a nuestro equipo de terapeutas", action: () => setView("about"), icon: "users" },
