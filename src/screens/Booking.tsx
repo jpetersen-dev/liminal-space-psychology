@@ -2,18 +2,22 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { format, addDays, startOfToday } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronLeft, CheckCircle2, Info, CreditCard } from "lucide-react";
+import { ChevronLeft, CheckCircle2, Info, CreditCard, Loader2 } from "lucide-react";
 import { useData } from "../contexts/DataContext";
 import { Button } from "../components/ui/Button";
 import { cn } from "../lib/utils";
+import { useAuth } from "../contexts/AuthContext";
 
 export function Booking() {
   const { therapists, services, isLoading } = useData();
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [selectedTherapistId, setSelectedTherapistId] = useState<string | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
 
   const today = startOfToday();
   const weekDays = Array.from({ length: 14 }).map((_, i) => addDays(today, i));
@@ -216,61 +220,88 @@ export function Booking() {
              <div className="w-full h-32 rounded-2xl overflow-hidden relative shadow-sm border border-border">
                 <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1499209974431-9dddcece7f88?w=600&q=80&fit=crop")'}}></div>
                 <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                   <h2 className="text-white font-bold text-lg drop-shadow-md tracking-wider">Detalles Personales</h2>
+                   <h2 className="text-white font-bold text-lg drop-shadow-md tracking-wider">Confirmar y Pagar</h2>
                 </div>
              </div>
 
-             <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleNext(); }}>
-               <div className="bg-white p-5 rounded-2xl shadow-sm border border-border space-y-4">
-                 <h3 className="text-sm font-semibold text-text-main">Tus Datos</h3>
-                 <input 
-                   type="text" 
-                   required
-                   placeholder="Nombre completo" 
-                   className="w-full bg-app-bg border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors" 
-                 />
-                 <input 
-                   type="email" 
-                   required
-                   placeholder="Correo electrónico (para la videollamada)" 
-                   className="w-full bg-app-bg border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors" 
-                 />
-                 <div className="flex gap-2">
-                    <input type="text" placeholder="+34" className="w-1/4 bg-app-bg border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors text-center" />
-                    <input type="tel" placeholder="Número de teléfono (Opcional)" className="w-3/4 bg-app-bg border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors" />
-                 </div>
+             {/* Booking Summary */}
+             <div className="bg-white p-5 rounded-2xl shadow-sm border border-border space-y-4">
+               <h3 className="text-sm font-semibold text-text-main">Resumen de tu reserva</h3>
+               <div className="flex items-center gap-4 pb-3 border-b border-border">
+                  <div className="w-12 h-12 rounded-xl bg-secondary overflow-hidden shrink-0">
+                    <img src={currentTherapist?.imageUrl} alt={currentTherapist?.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm text-text-main">{currentTherapist?.name}</p>
+                    <p className="text-xs text-text-muted">{currentTherapist?.role}</p>
+                  </div>
                </div>
-
-               <div className="bg-white p-5 rounded-2xl shadow-sm border border-border space-y-4 relative overflow-hidden">
-                 <div className="flex items-center gap-2 mb-2">
-                   <CreditCard size={18} className="text-text-muted" />
-                   <h3 className="text-sm font-semibold text-text-main">Mockup de Pago Seguro</h3>
-                 </div>
-                 
-                 <div className="p-4 bg-app-bg border border-border rounded-xl space-y-3 relative opacity-80 pointer-events-none">
-                    <div className="absolute inset-0 flex items-center justify-center z-10">
-                        <span className="bg-black/80 text-white text-[10px] uppercase font-bold tracking-wider px-3 py-1 rounded-full">Stripe Integration Pending</span>
-                    </div>
-                    <input type="text" disabled placeholder="0000 0000 0000 0000" className="w-full bg-white border border-border rounded-lg px-3 py-2 text-sm" />
-                    <div className="flex gap-3">
-                       <input type="text" disabled placeholder="MM/YY" className="w-1/2 bg-white border border-border rounded-lg px-3 py-2 text-sm" />
-                       <input type="text" disabled placeholder="CVC" className="w-1/2 bg-white border border-border rounded-lg px-3 py-2 text-sm" />
-                    </div>
-                 </div>
-
-                 <div className="flex justify-between items-center pt-2 font-bold text-text-main">
-                    <span>Total a pagar:</span>
-                    <span className="text-primary">{currentService?.price}</span>
-                 </div>
+               <div className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-text-muted">Servicio</span><span className="font-medium text-text-main">{currentService?.title}</span></div>
+                  <div className="flex justify-between"><span className="text-text-muted">Fecha</span><span className="font-medium text-text-main">{selectedDate && format(selectedDate, 'EEEE d MMM, yyyy', { locale: es })}</span></div>
+                  <div className="flex justify-between"><span className="text-text-muted">Hora</span><span className="font-medium text-text-main">{selectedTime}</span></div>
+                  <div className="flex justify-between"><span className="text-text-muted">Duración</span><span className="font-medium text-text-main">{currentService?.duration} min</span></div>
                </div>
-
-               {/* Overriding global button by hiding it and providing our own form submit inside motion div */}
-               <div className="pt-4">
-                  <Button size="lg" className="w-full">
-                    Garantizar Reserva: {currentService?.price}
-                  </Button>
+               <div className="flex justify-between items-center pt-3 border-t border-border font-bold text-text-main">
+                  <span>Total a pagar:</span>
+                  <span className="text-primary text-lg">{currentService?.price}</span>
                </div>
-             </form>
+             </div>
+
+             {/* Stripe CTA */}
+             <div className="bg-white p-5 rounded-2xl shadow-sm border border-border space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <CreditCard size={18} className="text-text-muted" />
+                  <h3 className="text-sm font-semibold text-text-main">Pago Seguro con Stripe</h3>
+                </div>
+                <p className="text-xs text-text-muted leading-relaxed">
+                  Al hacer clic serás redirigido a la pasarela segura de Stripe para completar el pago con tarjeta de crédito o débito. No almacenamos datos de tu tarjeta.
+                </p>
+
+                {paymentError && (
+                  <div className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">{paymentError}</div>
+                )}
+
+                <Button 
+                  size="lg" 
+                  className="w-full"
+                  disabled={isProcessing}
+                  onClick={async () => {
+                    setIsProcessing(true);
+                    setPaymentError("");
+                    try {
+                      const res = await fetch('/api/create-checkout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          serviceId: selectedServiceId,
+                          therapistName: currentTherapist?.name,
+                          date: selectedDate ? format(selectedDate, 'EEEE d MMMM yyyy', { locale: es }) : '',
+                          time: selectedTime,
+                          customerName: user?.user_metadata?.name || '',
+                          customerEmail: user?.email || '',
+                        }),
+                      });
+                      const data = await res.json();
+                      if (data.url) {
+                        window.location.href = data.url;
+                      } else {
+                        setPaymentError(data.error || 'Error al crear la sesión de pago');
+                        setIsProcessing(false);
+                      }
+                    } catch (err) {
+                      setPaymentError('Error de conexión. Intenta de nuevo.');
+                      setIsProcessing(false);
+                    }
+                  }}
+                >
+                  {isProcessing ? (
+                    <span className="flex items-center gap-2"><Loader2 size={18} className="animate-spin" /> Procesando...</span>
+                  ) : (
+                    `Pagar ${currentService?.price} con Stripe`
+                  )}
+                </Button>
+             </div>
 
           </motion.div>
         )}
